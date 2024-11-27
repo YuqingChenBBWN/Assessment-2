@@ -96,6 +96,7 @@ def main():
                         text = extract_text_from_pdf(f)
                         if text:
                             st.session_state.text = text
+                            st.success(f"Example file loaded: {example}")
         
         with col2:
             # File uploader
@@ -104,6 +105,7 @@ def main():
                 text = extract_text_from_pdf(uploaded_file)
                 if text:
                     st.session_state.text = text
+                    st.success("File uploaded successfully!")
 
     # Analysis Section
     if st.session_state.text is not None:
@@ -148,16 +150,17 @@ def main():
 
         # Process each step
         for title, info in steps.items():
-            if info["key"] not in st.session_state.results:
-                with st.expander(f"{title}", expanded=True):
-                    st.info(f"Processing {title.lower()}...")
+            with st.expander(f"{title}", expanded=True):
+                if info["key"] not in st.session_state.results:
+                    progress_placeholder = st.empty()
+                    progress_placeholder.info(f"Processing {title.lower()}...")
                     result = analyze_with_gpt(client, info["prompt"], st.session_state.text)
                     if result:
                         st.session_state.results[info["key"]] = result
+                        progress_placeholder.empty()  # Clear progress message
                         st.success(f"{title} completed!")
                         st.write(result)
-            else:
-                with st.expander(f"{title}", expanded=True):
+                else:
                     st.success(f"{title} completed!")
                     st.write(st.session_state.results[info["key"]])
 
@@ -185,7 +188,7 @@ def main():
                 with col2:
                     if st.button("🔄 Start New Analysis"):
                         st.session_state.clear()
-                        st.experimental_rerun()
+                        st.rerun()
 
 if __name__ == "__main__":
     main()
