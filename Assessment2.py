@@ -22,6 +22,8 @@ def initialize_session_state():
         st.session_state.text = None
     if 'results' not in st.session_state:
         st.session_state.results = {}
+    if 'show_download' not in st.session_state:
+        st.session_state.show_download = False
 
 def extract_text_from_pdf(pdf_file):
     try:
@@ -79,25 +81,29 @@ def main():
     if st.session_state.text is None:
         st.header("Document Upload")
         
-        # Example files
-        example_files = get_example_files()
-        if example_files:
-            example = st.selectbox(
-                "Select an example file",
-                ["Choose a file..."] + example_files
-            )
-            if example != "Choose a file...":
-                with open(os.path.join("test_files", example), 'rb') as f:
-                    text = extract_text_from_pdf(f)
-                    if text:
-                        st.session_state.text = text
+        col1, col2 = st.columns(2)
         
-        # File uploader
-        uploaded_file = st.file_uploader("Or upload your own PDF", type="pdf")
-        if uploaded_file:
-            text = extract_text_from_pdf(uploaded_file)
-            if text:
-                st.session_state.text = text
+        with col1:
+            # Example files
+            example_files = get_example_files()
+            if example_files:
+                example = st.selectbox(
+                    "Select an example file",
+                    ["Choose a file..."] + example_files
+                )
+                if example != "Choose a file...":
+                    with open(os.path.join("test_files", example), 'rb') as f:
+                        text = extract_text_from_pdf(f)
+                        if text:
+                            st.session_state.text = text
+        
+        with col2:
+            # File uploader
+            uploaded_file = st.file_uploader("Or upload your own PDF", type="pdf")
+            if uploaded_file:
+                text = extract_text_from_pdf(uploaded_file)
+                if text:
+                    st.session_state.text = text
 
     # Analysis Section
     if st.session_state.text is not None:
@@ -150,24 +156,36 @@ def main():
                         st.session_state.results[info["key"]] = result
                         st.success(f"{title} completed!")
                         st.write(result)
+            else:
+                with st.expander(f"{title}", expanded=True):
+                    st.success(f"{title} completed!")
+                    st.write(st.session_state.results[info["key"]])
 
-        # Generate Report
+        # Show results and download section
         if len(st.session_state.results) == len(steps):
-            st.header("Final Report")
-            report_content = create_report(st.session_state.results)
+            st.session_state.show_download = True
+
+        if st.session_state.show_download:
+            st.header("Analysis Complete")
             
-            # Download button
-            st.download_button(
-                "Download Complete Report",
-                report_content,
-                file_name=f"rental_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                mime="text/plain"
-            )
-            
-            # Reset button
-            if st.button("Start New Analysis"):
-                st.session_state.clear()
-                st.experimental_rerun()
+            # Download section in a container
+            with st.container():
+                report_content = create_report(st.session_state.results)
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.download_button(
+                        "📥 Download Complete Report",
+                        report_content,
+                        file_name=f"rental_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                        mime="text/plain",
+                        key="download_btn"
+                    )
+                
+                with col2:
+                    if st.button("🔄 Start New Analysis"):
+                        st.session_state.clear()
+                        st.experimental_rerun()
 
 if __name__ == "__main__":
     main()
